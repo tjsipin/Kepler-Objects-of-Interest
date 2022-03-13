@@ -44,7 +44,7 @@ best_complexity <- select_best(tune_res)
 
 class_tree_final <- finalize_workflow(class_tree_wf, best_complexity)
 
-class_tree_final_fit <- fit(class_tree_final, data = Carseats_train)
+class_tree_final_fit <- fit(class_tree_final, data = train.koi)
 class_tree_final_fit
 
 class_tree_final_fit %>%
