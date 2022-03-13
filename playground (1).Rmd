@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+options(scipen = 100)
 library(knitr)
 library(readr)
 library(tidyverse)
@@ -27,6 +28,7 @@ library(tidymodels)
 library(corrr)
 library(discrim)
 library(class)
+library(gapminder)
 ```
 Notes:
 - 4 models

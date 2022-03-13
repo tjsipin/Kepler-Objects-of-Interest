@@ -36,6 +36,8 @@ juice(pca_estimates)
 
 plot(cumsum(percent_variation), xlab = "Principal Component",
      ylab = "Proportion of Variation Explained", 
-     ylim = c(0,1), type = 'b')
-abline(h=.9, col = 2)
-grid(col = "lightgray", lty = "dotted")
+     ylim = c(0,1), type = 'b') %>%
+  abline(h=.9, col = 2) %>% 
+  grid(col = "lightgray", lty = "dotted")
+
+
