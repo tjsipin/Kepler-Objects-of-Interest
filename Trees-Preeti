@@ -15,7 +15,7 @@ class_tree_fit %>%
   rpart.plot()
 #the training accuracy
 augment(class_tree_fit, new_data = koi) %>%
-  accuracy(truth = High, estimate = .pred_class)
+  accuracy(truth = koi_disposition, estimate = .pred_class)
 #the confusion matrix
 augment(class_tree_fit, new_data = koi) %>%
   conf_mat(truth = koi_disposition, estimate = .pred_class)
