@@ -29,6 +29,9 @@ library(corrr)
 library(discrim)
 library(class)
 library(gapminder)
+library(kknn)
+library(reshape2)
+library(ggplot2)
 ```
 Notes:
 - 4 models
