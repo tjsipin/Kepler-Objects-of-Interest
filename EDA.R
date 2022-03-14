@@ -1,12 +1,14 @@
 # correlation
-koid.2.corr <- koid.2 %>% dplyr::select(-c(koi_disposition, koi_pdisposition,level)) %>% correlate()
+koi.corr <- koi %>%
+  dplyr::select(-c(koi_disposition, koi_fpflag_co, koi_fpflag_ec, koi_fpflag_nt, koi_fpflag_ss)) %>%
+  correlate()
 
-koid.2.corr
+koi.corr
 
-rplot(koid.2.corr)
+rplot(koi.corr)
 
 # data exploration
-summary(koid.2)
+summary(koi)
 
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 
@@ -15,4 +17,4 @@ summary(koid.2)
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
 
-# make splits at 0.1 and 0.9 for koid.3?
+# qq plot?
