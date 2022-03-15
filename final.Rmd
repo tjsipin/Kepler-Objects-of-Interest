@@ -77,6 +77,11 @@ koi.corr
 
 rplot(koi.corr)
 
+#plotting a heatmap
+x = data.matrix(koi.corr, rownames.force =TRUE)
+heatmap(x, col=rainbow(length(koi.corr)), main = "Heatmap of Predictors")
+```
+
 # data exploration
 summary(koi)
 
