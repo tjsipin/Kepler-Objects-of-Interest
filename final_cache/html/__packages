@@ -42,3 +42,4 @@ rlang
 vctrs
 dendextend
 xgboost
+ranger

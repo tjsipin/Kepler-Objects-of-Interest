@@ -2,11 +2,17 @@
 title: "playground"
 author: "TJ Sipin"
 date: "3/2/2022"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
+
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, 
+                      cache = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
 options(scipen = 100)
 library(knitr)
 library(readr)
@@ -159,6 +165,9 @@ do.chunk <- function(chunkid, folddef, Xdat, Ydat, ...) {
              train.error = mean(predYtr != Ytr), # Training error for each fold
              val.error = mean(predYvl != Yvl))
 }
+```
+
+```{r, eval=FALSE}
 
 # Set 3-fold CV
 
@@ -189,6 +198,12 @@ for(k in allK) {
   }
 }
 
+save(error.folds, file = "error.rda")
+```
+
+```{r}
+load("error.rda")
+
 head(error.folds, 10)
 
 # Transform the format of error.folds for further convenience
@@ -218,7 +233,8 @@ pred.YTest = knn(train = XTrain, test = XTest, cl = YTrain, k = bestneighbor)
 conf.matrix = table(predicted = pred.YTest, true = YTest)
 
 # Test error rate
-1 - sum(diag(conf.matrix)/sum(conf.matrix))
+
+print(paste("Test error rate: ", 1 - sum(diag(conf.matrix)/sum(conf.matrix))))
 
 # Plot errors
 ggplot(errors, aes(x = neighbors, y = error, color = variable)) + 
@@ -231,17 +247,8 @@ ggplot(errors, aes(x = neighbors, y = error, color = variable)) +
 
 ## Decision Tree
 
-```{r}
+```{r, eval = TRUE}
 #creating the model
-recipe <- recipe(
-  koi_disposition ~ koi_fpflag_nt + koi_fpflag_ss + koi_fpflag_co +
-    koi_fpflag_ec + koi_period + koi_time0bk + koi_impact + koi_duration + koi_depth + koi_prad + 
-    koi_teq + koi_insol + koi_model_snr + koi_steff + koi_slogg + koi_srad + 
-    ra + dec + koi_kepmag, data = koi_train) %>%
-  step_dummy(all_nominal(), -all_outcomes()) %>%
-  step_normalize(all_predictors()) %>%
-  step_zv(all_predictors()) %>%
-  step_impute_median(all_predictors())
   
 tree_model <- decision_tree() %>%
   set_engine("rpart") %>%
@@ -263,7 +270,6 @@ tree_grid <- grid_regular(
   levels = 5
 )
 
-tree_grid  
 
 tree_res <- tree_wf %>%
   tune_grid(
@@ -280,6 +286,7 @@ tune_res <- tune_grid(
   metrics = metric_set(accuracy)
 )
 
+
 tree_spec <- decision_tree() %>%
   set_engine("rpart")
 
@@ -294,8 +301,6 @@ koi_train$koi_disposition <-as.factor(koi_train$koi_disposition)
 
 class_tree_fit <- class_tree_spec %>%
   fit(koi_disposition ~ ., data = koi_train)
-
-class_tree_fit
 
 class_tree_fit %>%
   extract_fit_engine() %>%
@@ -325,11 +330,21 @@ koi_fold <- vfold_cv(koi_train)
 
 param_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
 
+```
+
+```{r, eval=FALSE}
 tune_res <- tune_grid(
   class_tree_wf, 
   resamples = koi_fold, 
   grid = param_grid, 
   metrics = metric_set(accuracy))
+
+save(tune_res, file = "tree_tune.rda")
+```
+
+
+```{r}
+load("tree_tune.rda")
 
 autoplot(tune_res)
 
@@ -340,7 +355,7 @@ class_tree_final <- finalize_workflow(class_tree_wf, best_complexity)
 koi_test$koi_disposition <- as.factor(koi_test$koi_disposition)
 
 class_tree_final_fit <- fit(class_tree_final, data = koi_test)
-class_tree_final_fit
+
 
 class_tree_final_fit %>%
   extract_fit_engine() %>%
@@ -358,7 +373,7 @@ final_tree_fit %>%
 ## Boosted Tree
 
 
-```{r}
+```{r, eval = FALSE}
 # Creating model
 
 boost_model <- boost_tree(min_n= tune(), 
@@ -389,25 +404,25 @@ boost_tune <- boost_wflow %>%
   tune_grid(resamples = koi_folds,
             grid = boost_grid)
 
-# tune_grid(boost_model,
-#           recipe,
-#           koi_folds,
-#           boost_grid)
-
-autoplot(boost_tune)
-
 # Boost results for metrics
 
 boost_res <- 
   boost_wflow %>% 
-  fit_resamples(
-    resamples = koi_folds, 
-    metrics = metric_set(
-      recall, precision, f_meas, 
-      accuracy, kap,
-      roc_auc, sens, spec),
-    control = control_resamples(save_pred = TRUE)
-  ) 
+    tune_grid(resamples = koi_folds,
+          grid = boost_grid,
+          metrics = metric_set(
+            recall, precision, f_meas,
+            accuracy, kap,
+            roc_auc, sens, spec
+          ))
+
+save(boost_tune, boost_res, file = "boost_tune.rda")
+```
+
+```{r}
+load("boost_tune.rda")
+
+autoplot(boost_tune)
 
 boost_res %>% collect_metrics(summarize = TRUE)
 
@@ -417,7 +432,7 @@ boost_res %>% collect_metrics(summarize = TRUE)
 
 ## Random Forest
 
-```{r}
+```{r, eval = TRUE}
 rf_model <-
   rand_forest(min_n = tune(),
               mtry = tune(),
@@ -436,6 +451,10 @@ rf_params <- parameters(rf_model) %>%
 rf_grid <- grid_regular(rf_params,
                         levels = 3)
 
+```
+
+```{r, eval = FALSE}
+
 rf_res <- rf_workflow %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid)
@@ -446,15 +465,84 @@ rf_tune <- rf_workflow %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid)
 
-save(rf_tune, rf_workflow, file = "rf_tune.rda")
+save(rf_tune, rf_workflow, rf_res, file = "rf_tune.rda")
+```
 
-tune_grid(rf_model,
-          recipe,
-          koi_folds,
-          rf_grid)
+```{r}
+
+load("rf_tune.rda")
+
 autoplot(rf_tune)
 
 show_best(rf_tune) %>% dplyr::select(-.estimator, -.config)
 
+```
+
+# Best Model 
+
+Upon comparison among all four models, the random forest performed the best on the test data, but by only a margin of 0.001 compared to the boosted tree model.
+
+We use https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/ as a guide to explore other metrics.
+
+First, we make a final model by taking the best parameters obtained in the previous section and run the fit.
+
+```{r}
+
+koi_train$koi_disposition <- as.factor(koi_train$koi_disposition)
+koi_test$koi_disposition <- as.factor(koi_test$koi_disposition)
+
+final_model <- 
+  rand_forest(min_n = 2,
+              mtry = 7,
+              mode = "classification") %>%
+  set_engine("ranger") %>%
+  fit(koi_disposition ~ ., data = koi_train)
+
+final_model %>%
+  predict(koi_test) %>%
+  bind_cols(koi_test) %>%
+  metrics(truth = koi_disposition, estimate = .pred_class)
+```
+
+Now we can explore the performance of our model by each predicted value in our sample space: `CANDIDATE`, `CONFIRMED`, and `FALSE POSITIVE`.
+
+```{r}
+# Per classifier metrics
+
+koi_probs <- final_model %>%
+  predict(koi_test, type = "prob") %>%
+  bind_cols(koi_test)
+
+# gain curve plot
+koi_probs %>%
+  gain_curve(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`) %>%
+  autoplot()
+
+# if we target 25% of observations with highest probability of being CANDIDATE,
+# we will get ~80% of all possible CANDIDATE observations
+
+# roc curve plot
+koi_probs %>%
+  roc_curve(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`) %>%
+  autoplot()
+
+# koi_disposition observations with FALSE POSITIVE have close to optimal model,
+# CONFIRMED is good, and CANDIDATE is worst (still pretty good)
+```
+
+We ran both a gain curve plot and an ROC AUC plot. The ROC AUC plot is highly promising, with the `FALSE POSITIVE` plot is very close to the optimal plot. The plots for the other outcomes are also similarly good. Additionally, the gain curve plot tells us that for `CANDIDATE` and `CONFIRMED`, among the 25% of observations with highest probability of being `CANDIDATE` and `CONFIRMED` respectively, we will get ~75% of all`CANDIDATE` and `CONFIRMED` observations.
+
+We now run different metrics and see the estimates for each.
+
+```{r}
+predict(final_model, koi_test, type = "prob") %>%
+  bind_cols(predict(final_model, koi_test)) %>%
+  bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
+  glimpse()
+
+predict(final_model, koi_test, type = "prob") %>%
+  bind_cols(predict(final_model, koi_test)) %>%
+  bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
+  metrics(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`, estimate = .pred_class)
 ```
 
