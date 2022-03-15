@@ -103,8 +103,12 @@ koi%>%
   ggplot() +
   aes(x= koi_disposition, y= koi_period, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
 
-#time0bk is the time corresponding to the center of the first detected transit in Barycentric Julian Day 
-ggplot(koi, aes(x= koi_disposition, y= koi_time0bk, color = koi_disposition)) + geom_point()
+#koi_depth is the degree to which the light of the fixed star is occluded at the moment in the transit where light from the star is least
+#equal to the ratio between the planet's radius (R p) and the star's radius (R *) squared
+
+koi%>%
+  ggplot() +
+  aes(x= koi_disposition, y= koi_depth, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
   
 #koi_disp against koi_prad
 #koi_prad is the radius of the planet, to see if there is a relationship with the radius and outcome
