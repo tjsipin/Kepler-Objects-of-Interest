@@ -35,6 +35,7 @@ library(ggplot2)
 library(rpart)
 library(rpart.plot)
 library(dendextend)
+library(xgboost)
 ```
 Notes:
 - 4 models
@@ -120,8 +121,7 @@ recipe <- recipe(
 
 ```{r}
 koi_folds <- vfold_cv(koi_train)
-train_folds <- vfold_cv(koi_train, v = 10)
-save(train_folds, recipe, file = "model_setup.rda")
+save(koi_folds, recipe, file = "model_setup.rda")
 ```
 
 # Models

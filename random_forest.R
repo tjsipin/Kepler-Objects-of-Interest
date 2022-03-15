@@ -35,6 +35,11 @@ tune_grid(rf_model,
           recipe,
           koi_folds,
           rf_grid)
+
 autoplot(rf_tune)
 
-show_best(rf_tune) %>% dplyr::select(-.estimator, -.config)
+show_best(rf_tune, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
+
+# best tree mtry = 7, min_n = 2. negligible difference in roc_auc and mean accuracy.
+
+
