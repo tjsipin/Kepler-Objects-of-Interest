@@ -95,18 +95,6 @@ koi%>%
   ggplot() +
   aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
   
-#plotting koi_dis against koi_period, using this because of the correlation chart #2
-koi%>%
-  ggplot() +
-  aes(x= koi_disposition, y= koi_period, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
-
-#koi_depth is the degree to which the light of the fixed star is occluded at the moment in the transit where light from the star is least
-#equal to the ratio between the planet's radius (R p) and the star's radius (R *) squared
-
-koi%>%
-  ggplot() +
-  aes(x= koi_disposition, y= koi_depth, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
-  
 #koi_disp against koi_prad
 #koi_prad is the radius of the planet, to see if there is a relationship with the radius and outcome
 
@@ -289,12 +277,15 @@ tree_model <- decision_tree() %>%
 set.seed(1)
 koi$koi_disposition <- as.factor(koi$koi_disposition)
 cell_folds <- vfold_cv(koi_train, v = 5)
+```
+Our first step with the tree was to create the framwork of the classification model. 
+The rpart engine was used, and koi_disposition was transformed from character to factor.
 
+```{r, eval = TRUE}
 tree_wf <- workflow() %>%
   add_recipe(recipe)%>%
   add_model(tree_model)
   
-
 # Tree Grid
 tree_grid <- grid_regular(
   cost_complexity(),
@@ -302,6 +293,7 @@ tree_grid <- grid_regular(
   levels = 5
 )
 
+tree_grid
 
 tree_res <- tree_wf %>%
   tune_grid(
@@ -317,8 +309,10 @@ tune_res <- tune_grid(
   grid = param_grid, 
   metrics = metric_set(accuracy)
 )
+```
+Our next step was to set up different parts of the model, beginning with the workflow and tree grid. The tree grid shows us a great visual table of the cost_complexity and the tree_depth. Then, for cross validation, we created 5 folds, and a tree grid with cost complexity and depth, that would be tuned through param_grid. Param_grid was a grid created with different values that the model could go through, with 10 levels. Then, for the classification problem, we are looking at accuracy, so our metric were always set to accuracy. 
 
-
+```{r, eval = TRUE}
 tree_spec <- decision_tree() %>%
   set_engine("rpart")
 
@@ -337,9 +331,11 @@ class_tree_fit <- class_tree_spec %>%
 class_tree_fit %>%
   extract_fit_engine() %>%
   rpart.plot()
-  
-#the training accuracy
+```
+Now, we use the training data to fit koi_disposition against the other predictors, and can see the tree we made. 
 
+#the training accuracy
+```{r, eval = TRUE}
 accurate = augment(class_tree_fit, new_data = koi) %>%
   accuracy(truth = koi_disposition, estimate = .pred_class)
 accurate
@@ -349,16 +345,15 @@ accurate
 confmat = augment(class_tree_fit, new_data = koi) %>%
   conf_mat(truth = koi_disposition, estimate = .pred_class)
 confmat
+```
+Next, we see the accuracy on the training model as well as the confusion matrix, which gives us an idea about how our test data will perform.
+
 
 #fitting the model on training data
-
-class_tree_fit <- fit(class_tree_spec, koi_disposition ~ ., data = koi_train)
 
 class_tree_wf <- workflow() %>%
   add_model(class_tree_spec %>% set_args(cost_complexity = tune())) %>%
   add_recipe(recipe)
-
-koi_fold <- vfold_cv(koi_train)
 
 param_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
 
@@ -367,13 +362,13 @@ param_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
 ```{r, eval=FALSE}
 tune_res <- tune_grid(
   class_tree_wf, 
-  resamples = koi_fold, 
+  resamples = cell_folds, 
   grid = param_grid, 
   metrics = metric_set(accuracy))
 
 save(tune_res, file = "tree_tune.rda")
 ```
-
+The autoplot generated shows the accuracy and roc_auc score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest roc_auc score being at 0.001.
 
 ```{r}
 load("tree_tune.rda")
@@ -401,9 +396,10 @@ final_tree_fit = class_tree_final %>% last_fit(koi_split)
 final_tree_fit %>%
   collect_metrics()
 ```
+Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and roc_auc.
 
 ## Boosted Tree
-
+As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and 
 
 ```{r, eval = FALSE}
 # Creating model
@@ -423,7 +419,11 @@ boost_wflow <-
 
 boost_params <- parameters(boost_model) %>%
   update(mtry = mtry(range = c(2, 12)))
+```
 
+
+Now, we define the tuning grid, with 3 levels this time, for each class. We tune the model using the koi_folds we made earlier, and call the metrics from workflow. We can see accuracy, kap, roc_auc, recall and more.
+```{r, eval = FALSE}
 # Define grid
 
 boost_grid <- grid_regular(boost_params,
@@ -450,6 +450,7 @@ boost_res <-
 
 save(boost_tune, boost_res, file = "boost_tune.rda")
 ```
+Finally, after collecting the metrics, and seeing the accuracy, we can use autoplot to plot out the results.
 
 ```{r}
 load("boost_tune.rda")
