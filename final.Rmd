@@ -1,6 +1,6 @@
 ---
 title: "playground"
-author: "TJ Sipin"
+author: "TJ Sipin, Preeti Kulkarni"
 date: "3/2/2022"
 output: 
   html_document:
@@ -71,41 +71,72 @@ koi = koi %>% dplyr::select(c(koi_disposition, koi_fpflag_nt, koi_fpflag_ss,
 
 ## Exploratory Data Analysis
 
+We first begin by looking at the correlation between predictors not including those that are of class factor and integer. 
+We can see the rplot between the numeric factors. Overall, it seems as if predictors do not have a high correlation with 
+each other, as there are many red dots.
+
 ```{r}
 # correlation
 koi.corr <- koi %>%
   dplyr::select(-c(koi_disposition, koi_fpflag_co, koi_fpflag_ec, koi_fpflag_nt, koi_fpflag_ss)) %>%
   correlate()
-
+  
 koi.corr
 
 rplot(koi.corr)
+```
+Next, we look at some descriptive statistics of the data set. We can use the summary() function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the colnames() function to familiarize ourselves with the column names.
 
 # data exploration
+```{r}
 summary(koi)
-
+colnames(koi)
 ```
 
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
+
+
+First, we plot koi_score versus koi_disposition. Koi_disposition has the current classes: CANDIDATE, FALSE POSITIVE,
+NOT DISPOSITIONED or CONFIRMED. Koi_score is a value between 0 and 1 that indicates the confidence in the KOI 
+disposition. For CANDIDATEs, a higher value indicates more confidence in its disposition, while for FALSE POSITIVEs, 
+a higher value indicates less confidence in that disposition. We can see that CONFIRMED cases tend to have a higher koi_score, where most of them are above 0.5. For CANDIDATE, the koi_score ranges from 25-75%. For the FALSE POSITIVE the koi_score is ranges from 0-50%. Logically, this makes sense, as confirmed planets would have a higher confidence level.
+
 ```{r}
+<<<<<<< HEAD
 #just curious about the koi_score v dispostion, shows up as first
 koi_eda <- read.csv("cumulative.csv")
 koi_eda%>%
+=======
+#score v disposition
+koi%>%
+>>>>>>> ca818faec9edd7e6ad98965df8a6aacc672cb779
   ggplot() +
   aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
   
-#koi_disp against koi_prad
-#koi_prad is the radius of the planet, to see if there is a relationship with the radius and outcome
+Next, we plot koi_disposition against koi_pred, where koi_pred is the radius of the planet. We are trying to see if there is a relationship with the radius and outcome of koi_disposition. It seems as if the confirmed planets have a smaller radius than the Candidates or False Positives. We can also see one extrema in the False Positive with a radius of over 20,000.
+
+``` {r}
+#disposition v prad
 
 ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geom_point()
 ```
+Now, focusing on koi_disposition, we can create a histogram to see the count of oberservations in each class. We can see that False Postives have the highest count, being over 3,000. Confirmed follows next with around 2,300 and candiate has the smallest number of counts at around 1,800.
 
 # #histograms
 ```{r}
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
 ```
+
+Finally, we can create a qqplot. The plot show us that the the entire data set is normally distributed, because it follows a linear trend. The tails are not directly on the qqline, but mostly stay consistent with the rest of the points.
 ## qq plot
+
+```{r}
+data <- rnorm(koi)
+qqnorm(data, col = "steelblue") 
+qqline(data)
+```
+Our next qqplot is to check the distribution of koi_disposition. Again, we can see that koi_dispostion is normally distributed. The points follow a much straighter line.
 
 ```{r}
 set.seed(123)
@@ -467,6 +498,10 @@ final_tree_fit %>%
 Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and ROC AUC.
 
 ## Boosted Tree
+<<<<<<< HEAD
+=======
+As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and parameters to tune.
+>>>>>>> ca818faec9edd7e6ad98965df8a6aacc672cb779
 
 As we did previously, we first begin by creating the framework of the model, using classification and `xgboost` as the engine. Our tuning parameters are `min_n`, `mtry`, and `learn_rate`.
 
@@ -483,8 +518,6 @@ boost_wflow <-
   workflow() %>%
   add_recipe(recipe) %>% 
   add_model(boost_model)
-
-# Trying different parameters (mtry from 2 to 12, same as rf)
 
 boost_params <- parameters(boost_model) %>%
   update(mtry = mtry(range = c(2, 12)))
