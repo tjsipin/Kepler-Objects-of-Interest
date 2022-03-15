@@ -44,3 +44,17 @@ koi_probs %>%
   roc_curve(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`) %>%
   autoplot()
 
+# koi_disposition observations with FALSE POSITIVE have close to optimal model,
+# CONFIRMED is good, and CANDIDATE is worst (still pretty good)
+
+
+
+predict(final_model, koi_test, type = "prob") %>%
+  bind_cols(predict(final_model, koi_test)) %>%
+  bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
+  glimpse()
+
+predict(final_model, koi_test, type = "prob") %>%
+  bind_cols(predict(final_model, koi_test)) %>%
+  bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
+  metrics(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`, estimate = .pred_class)
