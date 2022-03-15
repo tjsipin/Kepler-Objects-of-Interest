@@ -89,7 +89,8 @@ summary(koi)
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 ```{r}
 #just curious about the koi_score v dispostion, shows up as first
-koi%>%
+koi_eda <- read.csv("cumulative.csv")
+koi_eda%>%
   ggplot() +
   aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
   
@@ -117,6 +118,8 @@ qqline(data)
 
 ## Splitting KOI Data into Training and Testing Sets
 
+So that the resamples have equivalent proportions as the original data set, we use the `tidymodels` version of training/test set splitting, with the `strata` argument set so that each resample is created within `koi_disposition`.
+
 ```{r}
 # CV train and test split
 koi_split <- initial_split(koi,
@@ -126,6 +129,8 @@ koi_test <- testing(koi_split)
 ```
 
 ## Recipe
+
+Using the framework from https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/, we create our recipe, centering and scaling numeric data to have a mean of zero and standard deviation of one. This recipe will be conveniently used for three out of our four models.
 
 ```{r}
 # Recipe
@@ -142,6 +147,8 @@ recipe <- recipe(
 
 
 ## Setting Up k-Fold Cross Validation
+
+Here, we use `vfold_cv` from the `rsample` library to set up our k-fold cross-validation. This is a simple, one-step method of k-fold cross-validation, unlike the method used in Lab 04. Like our recipe, this will be used in three of our four models.
 
 ```{r}
 koi_folds <- vfold_cv(koi_train)
@@ -338,8 +345,9 @@ set.seed(1)
 koi$koi_disposition <- as.factor(koi$koi_disposition)
 cell_folds <- vfold_cv(koi_train, v = 5)
 ```
-Our first step with the tree was to create the framwork of the classification model. 
-The rpart engine was used, and koi_disposition was transformed from character to factor.
+
+Our first steps with the tree is to create the framework and workflow of the classification model. 
+The `rpart` engine is used, and `koi_disposition` is transformed from character to factor.
 
 ```{r, eval = TRUE}
 tree_wf <- workflow() %>%
@@ -370,7 +378,7 @@ tune_res <- tune_grid(
   metrics = metric_set(accuracy)
 )
 ```
-Our next step was to set up different parts of the model, beginning with the workflow and tree grid. The tree grid shows us a great visual table of the cost_complexity and the tree_depth. Then, for cross validation, we created 5 folds, and a tree grid with cost complexity and depth, that would be tuned through param_grid. Param_grid was a grid created with different values that the model could go through, with 10 levels. Then, for the classification problem, we are looking at accuracy, so our metric were always set to accuracy. 
+Our next step is to set up different parts of the model, beginning with the workflow and tree grid. The tree grid shows us a great visual table of the `cost_complexity` and the `tree_depth`. Then, for cross validation, we create 5 folds, and a tree grid with cost complexity and depth, that would be tuned through `param_grid`. `param_grid` is a grid created with different values that the model could go through, with 10 levels. Then, for the classification problem, we are looking at accuracy, so our metric is always set to accuracy. 
 
 ```{r, eval = TRUE}
 tree_spec <- decision_tree() %>%
@@ -392,23 +400,24 @@ class_tree_fit %>%
   extract_fit_engine() %>%
   rpart.plot()
 ```
-Now, we use the training data to fit koi_disposition against the other predictors, and can see the tree we made. 
 
-#the training accuracy
+Now, we use the training data to fit `koi_disposition` against the other predictors, and can see the tree we made. 
+
 ```{r, eval = TRUE}
-accurate = augment(class_tree_fit, new_data = koi) %>%
-  accuracy(truth = koi_disposition, estimate = .pred_class)
-accurate
-  
 #the confusion matrix
 
-confmat = augment(class_tree_fit, new_data = koi) %>%
+confmat = augment(class_tree_fit, new_data = koi_train) %>%
   conf_mat(truth = koi_disposition, estimate = .pred_class)
 confmat
+
+# Accuracy
+accurate = augment(class_tree_fit, new_data = koi_train) %>%
+  accuracy(truth = koi_disposition, estimate = .pred_class)
+accurate
 ```
-Next, we see the accuracy on the training model as well as the confusion matrix, which gives us an idea about how our test data will perform.
+Next, we try our model on the training data and obtain its confusion matrix, which gives us an accuracy of ~0.87, which is much better than expected and much better than the KNN model. Even without tuning, this is a great model. Let's try tuning.
 
-
+```{r}
 #fitting the model on training data
 
 class_tree_wf <- workflow() %>%
@@ -419,6 +428,8 @@ param_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
 
 ```
 
+Now that we fit our tree model for cross-validation, we use a popular workflow used by many people in the machine learning community.
+
 ```{r, eval=FALSE}
 tune_res <- tune_grid(
   class_tree_wf, 
@@ -428,7 +439,7 @@ tune_res <- tune_grid(
 
 save(tune_res, file = "tree_tune.rda")
 ```
-The autoplot generated shows the accuracy and roc_auc score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest roc_auc score being at 0.001.
+The autoplot generated shows the accuracy and ROC AUC score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest ROC AUC score being at 0.001.
 
 ```{r}
 load("tree_tune.rda")
@@ -447,21 +458,19 @@ class_tree_final_fit <- fit(class_tree_final, data = koi_test)
 class_tree_final_fit %>%
   extract_fit_engine() %>%
   rpart.plot()
-  
-koi_split <- initial_split(koi,
-                           strata = koi_disposition)
 
 final_tree_fit = class_tree_final %>% last_fit(koi_split)
 
 final_tree_fit %>%
   collect_metrics()
 ```
-Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and roc_auc.
+Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and ROC AUC.
 
 ## Boosted Tree
-As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and 
 
-```{r, eval = FALSE}
+As we did previously, we first begin by creating the framework of the model, using classification and `xgboost` as the engine. Our tuning parameters are `min_n`, `mtry`, and `learn_rate`.
+
+```{r, eval = T}
 # Creating model
 
 boost_model <- boost_tree(min_n= tune(), 
@@ -482,7 +491,8 @@ boost_params <- parameters(boost_model) %>%
 ```
 
 
-Now, we define the tuning grid, with 3 levels this time, for each class. We tune the model using the koi_folds we made earlier, and call the metrics from workflow. We can see accuracy, kap, roc_auc, recall and more.
+Now, we define the tuning grid, with 3 levels for each class this time. We tune the model using the `koi_folds` we made earlier, and call the metrics from workflow. We can see `accuracy`, `kap`, `roc_auc`, `recall`, and more. The runtime for `boost_tune` and `boost_res` is quite long, so we save it to a file to be loaded in later.
+
 ```{r, eval = FALSE}
 # Define grid
 
@@ -510,20 +520,33 @@ boost_res <-
 
 save(boost_tune, boost_res, file = "boost_tune.rda")
 ```
+
 Finally, after collecting the metrics, and seeing the accuracy, we can use autoplot to plot out the results.
 
 ```{r}
 load("boost_tune.rda")
 
-autoplot(boost_tune)
+best_complexity <- select_best(boost_res, metric = "accuracy")
 
-boost_res %>% collect_metrics(summarize = TRUE)
+class_boost_final <- finalize_workflow(boost_wflow, best_complexity)
 
+koi_test$koi_disposition <- as.factor(koi_test$koi_disposition)
+
+class_boost_final_fit <- fit(class_boost_final, data = koi_test)
+
+
+
+final_boost_fit = class_boost_final %>% last_fit(koi_split)
+
+final_boost_fit %>%
+  collect_metrics()
 ```
 
-
+Our boosted tree seems to do just a bit better than the decision tree at an accuracy of 0.882.
 
 ## Random Forest
+
+As usual, we set up our model workflow. We set `mtry` to a range of two to 12 in our cross-validation.
 
 ```{r, eval = TRUE}
 rf_model <-
@@ -546,6 +569,8 @@ rf_grid <- grid_regular(rf_params,
 
 ```
 
+Due to long runtimes, we save `rf_tune`, `rf_workflow`, and `rf_res` to a file to be read later.
+
 ```{r, eval = FALSE}
 
 rf_res <- rf_workflow %>%
@@ -567,9 +592,24 @@ load("rf_tune.rda")
 
 autoplot(rf_tune)
 
-show_best(rf_tune) %>% dplyr::select(-.estimator, -.config)
+show_best(rf_tune, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
+
+best_complexity <- select_best(rf_res, metric = "accuracy")
+
+class_rf_final <- finalize_workflow(rf_workflow, best_complexity)
+
+class_rf_final_fit <- fit(class_rf_final, data = koi_test)
+
+
+
+final_rf_fit = class_rf_final %>% last_fit(koi_split)
+
+final_rf_fit %>%
+  collect_metrics()
 
 ```
+Our random forest performs better by only 0.001 compared to the boosted tree model. Because of that, we'll use the random forest as our best model and explore it.
+
 
 # Best Model 
 
@@ -577,7 +617,7 @@ Upon comparison among all four models, the random forest performed the best on t
 
 We use https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/ as a guide to explore other metrics.
 
-First, we make a final model by taking the best parameters obtained in the previous section and run the fit.
+First, we make a final model by taking the best parameters obtained (`min_n = 21` and `mtry = 7`) in the previous section and run the fit.
 
 ```{r}
 
@@ -585,7 +625,7 @@ koi_train$koi_disposition <- as.factor(koi_train$koi_disposition)
 koi_test$koi_disposition <- as.factor(koi_test$koi_disposition)
 
 final_model <- 
-  rand_forest(min_n = 2,
+  rand_forest(min_n = 21,
               mtry = 7,
               mode = "classification") %>%
   set_engine("ranger") %>%
