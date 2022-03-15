@@ -42,17 +42,15 @@ library(rpart)
 library(rpart.plot)
 library(dendextend)
 library(xgboost)
+library(rlang)
+library(tidyr)
 ```
-Notes:
-- 4 models
-- How to deal with extremes? (aka create equal amounts of observations across 0-1) data augmentation? (cat)
-- How to do CV?
-- Lasso and ridge for variable selection
+
 
 
 ## Data Wrangling and Cleaning
 
-
+The first thing we do is obtain the data set from 
 ```{r}
 koi = read.csv("cumulative.csv")
 koi <- dplyr::select(koi,-c(kepoi_name, koi_teq_err1, koi_teq_err2, rowid, kepid, kepler_name, koi_tce_delivname))
@@ -64,7 +62,7 @@ koi = koi %>% dplyr::select(c(koi_disposition, koi_fpflag_nt, koi_fpflag_ss,
                               koi_fpflag_co, koi_fpflag_ec, koi_period, koi_time0bk, koi_impact, 
                               koi_duration, koi_depth, koi_prad, koi_teq, koi_insol, koi_model_snr, 
                               koi_steff, koi_slogg, koi_srad, ra, dec, koi_kepmag)) %>%
-  mutate(koi_disposition = as.character(koi_disposition)) %>%
+  mutate(koi_disposition = as.factor(koi_disposition)) %>%
   mutate(koi_fpflag_nt = factor(koi_fpflag_nt)) %>%
   mutate(koi_fpflag_ss = factor(koi_fpflag_ss)) %>%
   mutate(koi_fpflag_co = factor(koi_fpflag_co)) %>%
@@ -93,13 +91,12 @@ summary(koi)
 
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 
-# histograms
+# #histograms
 ```{r}
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
-
 ```
-# qq plot
+## qq plot
 
 ```{r}
 set.seed(123)
@@ -107,6 +104,7 @@ data <- rnorm(koi$koi_disposition)
 qqnorm(data, col = "steelblue") 
 qqline(data)
 ```
+
 
 
 ## Splitting KOI Data into Training and Testing Sets
@@ -142,9 +140,63 @@ koi_folds <- vfold_cv(koi_train)
 save(koi_folds, recipe, file = "model_setup.rda")
 ```
 
+
+# PCA
+
+One of the dangers of performing PCA is that we lose interpretability in the predictors. Thus, we shouldn't use PCA in our algorithms. However, we perform it anyway for data exploration. Here is a quick look of our `prcomp` object using `summary()`.
+
+```{r}
+pr.out = prcomp(koi[6:20], scale=T)
+summary(pr.out)
+```
+
+We set up our workflow, taking inspiration from https://cmdlinetips.com/2020/06/pca-with-tidymodels-in-r/.
+
+```{r}
+pca_trans <- recipe %>%
+  step_center(all_numeric()) %>%
+  step_scale(all_numeric()) %>%
+  step_pca(all_numeric())
+
+pca_estimates <- prep(pca_trans)
+
+sdev <- pca_estimates$steps[[7]]$res$sdev
+
+percent_variation <- sdev^2 / sum(sdev^2)
+
+var_df <- data.frame(PC=paste0("PC", 1:length(sdev)),
+                     var_explained=percent_variation,
+                     stringsAsFactors = FALSE)
+```
+And now, we make a scree plot.
+
+```{r}
+var_df %>%
+  mutate(PC = fct_inorder(PC)) %>%
+  ggplot(aes(x=PC, y=var_explained)) + 
+  geom_col()
+```
+As we can see, there's no PC that particularly stands out as none exceed 20% variance explained.
+
+And here's a plot of the cumulative sum of explained variance by each PC.
+```{r}
+plot(cumsum(percent_variation), xlab = "Principal Component",
+     ylab = "Proportion of Variation Explained", 
+     ylim = c(0,1), type = 'b') %>%
+  abline(h=.9, col = 2) %>% 
+  grid(col = "lightgray", lty = "dotted")
+```
+
+If we were to do PCA, we would use 13 PCs in our model building.
+
 # Models
 
-## K-Nearest Neighbor
+The four models we'll use are K-Nearest Neighbors, Decision Tree, Boosted Trees, and Random Forest. The choice to use a decision tree is that it is not uncommon for it to be less accurate, so we wanted to see how it compares to the other models.
+
+## K-Nearest Neighbors
+
+First, we split the training and testing data sets into X (predictor) and Y (outcome) subsets.
+
 ```{r}
 # lab04
 
@@ -152,7 +204,11 @@ XTrain = koi_train %>% dplyr::select(-koi_disposition)
 YTrain = koi_train$koi_disposition
 XTest = koi_test %>% dplyr::select(-koi_disposition)
 YTest = koi_test$koi_disposition
+```
 
+Then, using the code from Lab 04, we create a function `do.chunk`, which carries out k-fold cross-validation and returns a data frame of all possible values of folds, with their training and validation errors.
+
+```{r}
 do.chunk <- function(chunkid, folddef, Xdat, Ydat, ...) {
   # Get training index
   train = (folddef!=chunkid)
@@ -178,6 +234,8 @@ do.chunk <- function(chunkid, folddef, Xdat, Ydat, ...) {
              val.error = mean(predYvl != Yvl))
 }
 ```
+
+Like in the lab, we try a 3-fold cross-validation, trying from one to 50 neighbors. Then we save data frame `error.folds` so we don't have to run it again.
 
 ```{r, eval=FALSE}
 
@@ -212,6 +270,8 @@ for(k in allK) {
 
 save(error.folds, file = "error.rda")
 ```
+
+From `error.folds`, we choose the best number of neighbors based on validation error. If there was a tie in error rate, then we would choose the larger number of neighbors for a simpler model.
 
 ```{r}
 load("error.rda")
@@ -253,9 +313,9 @@ ggplot(errors, aes(x = neighbors, y = error, color = variable)) +
   geom_line(aes(group = interaction(variable,fold))) +
   stat_summary(aes(group = variable), fun = "mean", geom = "line", size = 3) +
   geom_vline(aes(xintercept = bestneighbor), linetype = "dashed")
-
 ```
 
+It appears that 38 is the best number of neighbors, with a test error rate of ~ 0.36 (test accuracy rate of ~ 0.64). This isn't too terrible, but as we see later, we can definitely do better.
 
 ## Decision Tree
 

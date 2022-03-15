@@ -1,13 +1,14 @@
+library(devtools)
+install_github("vqv/ggbiplot", force = T)
+library(ggbiplot)
+
 koi_pca = koi %>% dplyr::select(-koi_disposition)
 
 pr.out = prcomp(koi[6:20], scale=T)
-pr.out$center
-pr.out$rotation
+summary(pr.out)
+
 dim(pr.out$x)
 dim(koi)
-biplot(pr.out, scale = 0)
-
-
 
 
 pca_trans <- recipe %>%
@@ -31,6 +32,8 @@ var_df %>%
   mutate(PC = fct_inorder(PC)) %>%
   ggplot(aes(x=PC, y=var_explained)) + 
   geom_col()
+
+var_df
 
 juice(pca_estimates)
 
