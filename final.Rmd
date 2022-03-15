@@ -485,7 +485,7 @@ final_tree_fit %>%
 Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and roc_auc.
 
 ## Boosted Tree
-As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and 
+As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and parameters to tune.
 
 ```{r, eval = FALSE}
 # Creating model
@@ -500,8 +500,6 @@ boost_wflow <-
   workflow() %>%
   add_recipe(recipe) %>% 
   add_model(boost_model)
-
-# Trying different parameters (mtry from 2 to 12, same as rf)
 
 boost_params <- parameters(boost_model) %>%
   update(mtry = mtry(range = c(2, 12)))
