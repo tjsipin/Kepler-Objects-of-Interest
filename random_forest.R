@@ -31,10 +31,10 @@ rf_tune <- rf_workflow %>%
 
 save(rf_tune, rf_workflow, file = "rf_tune.rda")
 
-tune_grid(rf_model,
+autoplot(tune_grid(rf_model,
           recipe,
           koi_folds,
-          rf_grid)
+          rf_grid))
 
 autoplot(rf_tune)
 

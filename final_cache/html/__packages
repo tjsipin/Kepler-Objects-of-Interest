@@ -40,3 +40,5 @@ rpart
 rpart.plot
 rlang
 vctrs
+dendextend
+xgboost
