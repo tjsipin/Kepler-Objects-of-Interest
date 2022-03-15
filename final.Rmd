@@ -92,6 +92,25 @@ heatmap(x, col=rainbow(length(koi.corr)), main = "Heatmap of Predictors")
 summary(koi)
 
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
+```{r}
+#just curious about the koi_score v dispostion, shows up as first
+koi%>%
+  ggplot() +
+  aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
+  
+#plotting koi_dis against koi_period, using this because of the correlation chart #2
+koi%>%
+  ggplot() +
+  aes(x= koi_disposition, y= koi_period, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
+
+#time0bk is the time corresponding to the center of the first detected transit in Barycentric Julian Day 
+ggplot(koi, aes(x= koi_disposition, y= koi_time0bk, color = koi_disposition)) + geom_point()
+  
+#koi_disp against koi_prad
+#koi_prad is the radius of the planet, to see if there is a relationship with the radius and outcome
+
+ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geom_point()
+```
 
 # histograms
 ```{r}
