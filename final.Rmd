@@ -83,11 +83,18 @@ summary(koi)
 # graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 
 # histograms
-
+```{r}
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
 
-# qq plot?
+```
+# qq plot
+
+```{r}
+set.seed(123)
+data <- rnorm(koi$koi_disposition)
+qqnorm(data, col = "steelblue") 
+qqline(data)
 ```
 
 
