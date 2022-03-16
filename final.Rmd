@@ -520,7 +520,7 @@ final_tree_fit = class_tree_final %>% last_fit(koi_split)
 final_tree_fit %>%
   collect_metrics()
 ```
-Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for accuracy and ROC AUC.
+Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for Accuracy and ROC AUC.
 
 ## Boosted Tree
 <<<<<<< HEAD
@@ -756,4 +756,4 @@ few_model %>%
 
 # Conclusion
 
-We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. KNN did not work as well as the other three, but nevertheless, still produced results with an accuracy greater than 33%. Since the other three models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED.
+We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. KNN did not work as well as the other three, but nevertheless, still produced results with an accuracy greater than 33%. Since the other three models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED. Of course, this only works for observations with the properties we used in our model already. Further development of models that use properties that are easier to obtain is necessary to further workflow efficiency for those studying KOIs.
