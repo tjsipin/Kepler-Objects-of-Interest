@@ -737,3 +737,23 @@ predict(final_model, koi_test, type = "prob") %>%
   metrics(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`, estimate = .pred_class)
 ```
 
+Overall, we have a very high accuracy similar to our boosted tree and pruned models on our testing data.
+
+Let's try running the tree on a few predictors that we believe are easy to obtain, like `koi_period`, `koi_teq`, `koi_insol`, `koi_incl`, `koi_ror`, and `koi_dor`.
+
+```{r}
+few_model <- rand_forest(min_n = 21,
+              mtry = 7,
+              mode = "classification") %>%
+  set_engine("ranger") %>%
+  fit(koi_disposition ~ koi_period + koi_teq + koi_insol, data = koi_train)
+few_model %>%
+  predict(koi_test) %>%
+  bind_cols(koi_test) %>%
+  metrics(truth = koi_disposition, estimate = .pred_class)
+```
+
+
+# Conclusion
+
+We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. KNN did not work as well as the other three, but nevertheless, still produced results with an accuracy greater than 33%. Since the other three models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED.
