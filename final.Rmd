@@ -118,7 +118,8 @@ each other, as there are many red dots.
 koi.corr <- koi %>%
   dplyr::select(-c(koi_disposition, koi_fpflag_co, koi_fpflag_ec, koi_fpflag_nt, koi_fpflag_ss)) %>%
   correlate()
-rplot(koi.corr)
+rplot(koi.corr) +
+  theme(axis.text.x = element_text(angle = 90))
 ```
 
 
