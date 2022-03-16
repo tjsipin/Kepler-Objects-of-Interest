@@ -45,12 +45,39 @@ library(xgboost)
 library(rlang)
 library(tidyr)
 ```
+# Introduction
+
+## What is KOI?
+
+NASA studies foreign bodies and planets in space by using highly developed technology. This project uses data from the Kepler Space Observatory, which is a NASA built satellite that was launched in 2009. NASA's ultimate goal is finding other habitable planets besides Earth. NASA calls these possible habitable planets exoplanets. As of now, there are over 3000 confirmed exoplanets total, while the camera continues to do further exploration.
+
+KOI stands for Kepler Objects of Interest. The data set we are exploring contains 10,000 exoplanet candidates that the Kepler Space Observatory has observations on (KOI). The observations depend on several variables and have many properties. We are interested in predicting the KOI disposition, which says whether a planet is confirmed, a false positive, or a candidate of being a KOI.
+
+
+## Why Might This Model Be Useful?
+
+This model is useful because it allows us to gain a better understanding and confidence on whether a planet is habitable or not, and to prioritize resources to planets predicted to be categorized as CONFIRMED or CANDIDATEs, which would save researchers time and money. It also allows us to figure out what factors are the most important when declaring a planet an exoplanet. 
+
+There is so much in space that we have not explored, and new discoveries can make a difference in history. The steps leading to those discoveries can be accomplished by using this model.
 
 
 
 ## Data Wrangling and Cleaning
 
-The first thing we do is obtain the data set from 
+The first thing we do is obtain the data set from https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=koi and select only a handful of predictors.
+
+The most interesting predictors include:
+
+  - `koi_disposition` (our target variable): The category of this KOI from the Exoplanet Archive. Current values are CANDIDATE, FALSE POSITIVE, or CONFIRMED. All KOIs marked as CONFIRMED are also listed in the Exoplanet Archive Confirmed Planet table. Designations of CANDIDATE and FALSE POSITIVE are taken from the Disposition Using Kepler Data. 
+  - `koi_period`: The interval between consecutive planetary transits.
+  - `koi_prad`: The radius of the planet. Planetary radius is the product of the planet star radius ratio and the stellar radius.
+  - `koi_teq`: Approximation for the temperature of the planet. The calculation of equilibrium temperature assumes a) thermodynamic equilibrium between the incident stellar flux and the radiated heat from the planet, b) a Bond albedo (the fraction of total power incident upon the planet scattered back into space) of 0.3, c) the planet and star are blackbodies, and d) the heat is evenly distributed between the day and night sides of the planet.
+  - `koi_insol`: Insolation flux is another way to give the equilibrium temperature. It depends on the stellar parameters (specifically the stellar radius and temperature), and on the semi-major axis of the planet. It's given in units relative to those measured for the Earth from the Sun.
+  - `koi_dor`: The distance between the planet and the star at mid-transit divided by the stellar radius. For the case of zero orbital eccentricity, the distance at mid-transit is the semi-major axis of the planetary orbit.
+  
+The definitions are taken from the official dictionary of this data set: https://exoplanetarchive.ipac.caltech.edu/docs/API_kepcandidate_columns.html. All other definitions may be explored here.
+
+
 ```{r}
 koi = read.csv("cumulative.csv")
 koi <- dplyr::select(koi,-c(kepoi_name, koi_teq_err1, koi_teq_err2, rowid, kepid, kepler_name, koi_tce_delivname))
@@ -85,7 +112,7 @@ koi.corr
 
 rplot(koi.corr)
 ```
-Next, we look at some descriptive statistics of the data set. We can use the summary() function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the colnames() function to familiarize ourselves with the column names.
+Next, we look at some descriptive statistics of the data set. We can use the `summary()` function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the `colnames()` function to familiarize ourselves with the column names.
 
 # data exploration
 ```{r}
@@ -93,34 +120,32 @@ summary(koi)
 colnames(koi)
 ```
 
-# graph of univariate, multivariate relationships between outcome and predictor(s) or between predictors
+# Graphs of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 
 
-First, we plot koi_score versus koi_disposition. Koi_disposition has the current classes: CANDIDATE, FALSE POSITIVE,
-NOT DISPOSITIONED or CONFIRMED. Koi_score is a value between 0 and 1 that indicates the confidence in the KOI 
+First, we plot `koi_score` versus `koi_disposition`. `koi_disposition` has the current classes: CANDIDATE, FALSE POSITIVE, or CONFIRMED. `koi_score` is a value between 0 and 1 that indicates the confidence in the KOI 
 disposition. For CANDIDATEs, a higher value indicates more confidence in its disposition, while for FALSE POSITIVEs, 
-a higher value indicates less confidence in that disposition. We can see that CONFIRMED cases tend to have a higher koi_score, where most of them are above 0.5. For CANDIDATE, the koi_score ranges from 25-75%. For the FALSE POSITIVE the koi_score is ranges from 0-50%. Logically, this makes sense, as confirmed planets would have a higher confidence level.
+a higher value indicates less confidence in that disposition. We can see that CONFIRMED cases tend to have a higher `koi_score`, where most of them are above 0.5. For CANDIDATE, the koi_score ranges from 25-75%. For the FALSE POSITIVE the `koi_score` ranges from 0-50%. Logically, this makes sense, as confirmed planets would have a higher confidence level.
 
 ```{r}
-<<<<<<< HEAD
 #just curious about the koi_score v dispostion, shows up as first
 koi_eda <- read.csv("cumulative.csv")
 koi_eda%>%
-=======
+
 #score v disposition
 koi%>%
->>>>>>> ca818faec9edd7e6ad98965df8a6aacc672cb779
   ggplot() +
   aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
-  
-Next, we plot koi_disposition against koi_pred, where koi_pred is the radius of the planet. We are trying to see if there is a relationship with the radius and outcome of koi_disposition. It seems as if the confirmed planets have a smaller radius than the Candidates or False Positives. We can also see one extrema in the False Positive with a radius of over 20,000.
+```
+
+Next, we plot `koi_disposition` against `koi_prad`, where `koi_prad` is the radius of the planet. We are trying to see if there is a relationship with the radius and outcome of `koi_disposition`. It seems as if the confirmed planets have a smaller radius than the CANDIDATEs or FALSE POSITIVEs. We can also see one extrema in the FALSE POSITIVEs with a radius of over 20,000.
 
 ``` {r}
 #disposition v prad
 
 ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geom_point()
 ```
-Now, focusing on koi_disposition, we can create a histogram to see the count of oberservations in each class. We can see that False Postives have the highest count, being over 3,000. Confirmed follows next with around 2,300 and candiate has the smallest number of counts at around 1,800.
+Now, focusing on `koi_disposition`, we can create a histogram to see the count of observations in each class. We can see that FALSE POSITIVEs have the highest count, being over 3,000. Confirmed follows next with around 2,300 and CANDIDATE has the smallest number of counts at around 1,800.
 
 # #histograms
 ```{r}
@@ -136,7 +161,7 @@ data <- rnorm(koi)
 qqnorm(data, col = "steelblue") 
 qqline(data)
 ```
-Our next qqplot is to check the distribution of koi_disposition. Again, we can see that koi_dispostion is normally distributed. The points follow a much straighter line.
+Our next qqplot is to check the distribution of `koi_disposition`. Again, we can see that `koi_dispostion` is normally distributed. The points follow a much straighter line.
 
 ```{r}
 set.seed(123)
@@ -145,7 +170,7 @@ qqnorm(data, col = "steelblue")
 qqline(data)
 ```
 
-
+# Pre-Model Set-up
 
 ## Splitting KOI Data into Training and Testing Sets
 
@@ -670,7 +695,7 @@ final_model %>%
   metrics(truth = koi_disposition, estimate = .pred_class)
 ```
 
-Now we can explore the performance of our model by each predicted value in our sample space: `CANDIDATE`, `CONFIRMED`, and `FALSE POSITIVE`.
+Now we can explore the performance of our model by each predicted value in our sample space: CANDIDATE, CONFIRMED, and FALSE POSITIVE.
 
 ```{r}
 # Per classifier metrics
@@ -696,7 +721,7 @@ koi_probs %>%
 # CONFIRMED is good, and CANDIDATE is worst (still pretty good)
 ```
 
-We ran both a gain curve plot and an ROC AUC plot. The ROC AUC plot is highly promising, with the `FALSE POSITIVE` plot is very close to the optimal plot. The plots for the other outcomes are also similarly good. Additionally, the gain curve plot tells us that for `CANDIDATE` and `CONFIRMED`, among the 25% of observations with highest probability of being `CANDIDATE` and `CONFIRMED` respectively, we will get ~75% of all`CANDIDATE` and `CONFIRMED` observations.
+We ran both a gain curve plot and an ROC AUC plot. The ROC AUC plot is highly promising, with the FALSE POSITIVE plot very close to the optimal plot. The plots for the other outcomes are also similarly good. Additionally, the gain curve plot tells us that for CANDIDATE and CONFIRMED, among the 25% of observations with highest probability of being CANDIDATE and CONFIRMED respectively, we will get ~75% of allCANDIDATE and CONFIRMED observations.
 
 We now run different metrics and see the estimates for each.
 
