@@ -118,7 +118,8 @@ each other, as there are many red dots.
 koi.corr <- koi %>%
   dplyr::select(-c(koi_disposition, koi_fpflag_co, koi_fpflag_ec, koi_fpflag_nt, koi_fpflag_ss)) %>%
   correlate()
-rplot(koi.corr)
+rplot(koi.corr) +
+  theme(axis.text.x = element_text(angle = 90))
 ```
 
 
@@ -682,6 +683,10 @@ Finally, after collecting the metrics, and seeing the accuracy, we can use autop
 ```{r}
 load("boost_tune.rda")
 
+autoplot(boost_tune)
+```
+
+```{r}
 best_complexity <- select_best(boost_res, metric = "accuracy")
 
 class_boost_final <- finalize_workflow(boost_wflow, best_complexity)
