@@ -45,6 +45,8 @@ library(xgboost)
 library(rlang)
 library(tidyr)
 ```
+![Famous Exoplanets and Earth](tjsipin/Documents/School/W22/PSTAT_131/fuzzy-dollop/pictures/exoplanets.jpg)
+
 # Introduction
 
 ## What is KOI?
@@ -107,17 +109,13 @@ each other, as there are many red dots.
 koi.corr <- koi %>%
   dplyr::select(-c(koi_disposition, koi_fpflag_co, koi_fpflag_ec, koi_fpflag_nt, koi_fpflag_ss)) %>%
   correlate()
-  
-koi.corr
-
 rplot(koi.corr)
 ```
 Next, we look at some descriptive statistics of the data set. We can use the `summary()` function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the `colnames()` function to familiarize ourselves with the column names.
 
-# data exploration
+# Data Exploration
 ```{r}
 summary(koi)
-colnames(koi)
 ```
 
 # Graphs of univariate, multivariate relationships between outcome and predictor(s) or between predictors
@@ -130,10 +128,9 @@ a higher value indicates less confidence in that disposition. We can see that CO
 ```{r}
 #just curious about the koi_score v dispostion, shows up as first
 koi_eda <- read.csv("cumulative.csv")
-koi_eda%>%
-
+ 
 #score v disposition
-koi%>%
+koi_eda %>%
   ggplot() +
   aes(x= koi_disposition, y= koi_score, color = koi_disposition)+ geom_boxplot(show.legend = TRUE)
 ```
@@ -147,14 +144,15 @@ ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geo
 ```
 Now, focusing on `koi_disposition`, we can create a histogram to see the count of observations in each class. We can see that FALSE POSITIVEs have the highest count, being over 3,000. Confirmed follows next with around 2,300 and CANDIDATE has the smallest number of counts at around 1,800.
 
-# #histograms
+## Histograms
 ```{r}
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
 ```
 
 Finally, we can create a qqplot. The plot show us that the the entire data set is normally distributed, because it follows a linear trend. The tails are not directly on the qqline, but mostly stay consistent with the rest of the points.
-## qq plot
+
+## QQ Plot
 
 ```{r}
 data <- rnorm(koi)
@@ -188,7 +186,7 @@ koi_test <- testing(koi_split)
 
 Using the framework from https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/, we create our recipe, centering and scaling numeric data to have a mean of zero and standard deviation of one. This recipe will be conveniently used for three out of our four models.
 
-```{r}
+```{r class.source = 'fold-show'}
 # Recipe
 recipe <- recipe(
   koi_disposition ~ koi_fpflag_nt + koi_fpflag_ss + koi_fpflag_co +
@@ -223,7 +221,7 @@ summary(pr.out)
 
 We set up our workflow, taking inspiration from https://cmdlinetips.com/2020/06/pca-with-tidymodels-in-r/.
 
-```{r}
+```{r class.source = 'fold-show'}
 pca_trans <- recipe %>%
   step_center(all_numeric()) %>%
   step_scale(all_numeric()) %>%
@@ -239,6 +237,7 @@ var_df <- data.frame(PC=paste0("PC", 1:length(sdev)),
                      var_explained=percent_variation,
                      stringsAsFactors = FALSE)
 ```
+
 And now, we make a scree plot.
 
 ```{r}
@@ -268,7 +267,7 @@ The four models we'll use are K-Nearest Neighbors, Decision Tree, Boosted Trees,
 
 First, we split the training and testing data sets into X (predictor) and Y (outcome) subsets.
 
-```{r}
+```{r class.source = 'fold-show'}
 # lab04
 
 XTrain = koi_train %>% dplyr::select(-koi_disposition)
@@ -308,7 +307,7 @@ do.chunk <- function(chunkid, folddef, Xdat, Ydat, ...) {
 
 Like in the lab, we try a 3-fold cross-validation, trying from one to 50 neighbors. Then we save data frame `error.folds` so we don't have to run it again.
 
-```{r, eval=FALSE}
+```{r class.source = 'fold-show', eval=FALSE}
 
 # Set 3-fold CV
 
@@ -367,7 +366,6 @@ val.error.means = errors %>%
 # Best num of neighbors (if tie, pick larger number of neighbors for simpler model)
 
 bestneighbor = max(val.error.means$neighbors)
-bestneighbor
 
 set.seed(345)
 pred.YTest = knn(train = XTrain, test = XTest, cl = YTrain, k = bestneighbor)
@@ -429,13 +427,11 @@ for(k in allK) {
   }
 }
 
-save(error.folds.few, file = "errorfew.rda")
+save(XTrain.few, YTrain.few, XTest.few, YTest.few, error.folds.few, file = "errorfew.rda")
 ```
 
 ```{r}
 load("errorfew.rda")
-
-head(error.folds.few, 10)
 
 # Transform the format of error.folds for further convenience
 errors = melt(error.folds.few, id.vars = c('fold', 'neighbors'), value.name = 'error')
@@ -455,7 +451,6 @@ val.error.means.few = errors %>%
 # Best num of neighbors (if tie, pick larger number of neighbors for simpler model)
 
 bestneighbor.few = max(val.error.means.few$neighbors)
-bestneighbor.few
 
 set.seed(345)
 pred.YTest.few = knn(train = XTrain.few, test = XTest.few, cl = YTrain.few, k = bestneighbor.few)
@@ -477,7 +472,7 @@ It appears that the test error rate increased by 0.01, despite losing 13 predict
 
 ## Decision Tree
 
-```{r, eval = TRUE}
+```{r class.source = 'fold-show', eval = TRUE}
 #creating the model
   
 tree_model <- decision_tree() %>%
@@ -492,7 +487,7 @@ cell_folds <- vfold_cv(koi_train, v = 5)
 Our first steps with the tree is to create the framework and workflow of the classification model. 
 The `rpart` engine is used, and `koi_disposition` is transformed from character to factor.
 
-```{r, eval = TRUE}
+```{r class.source = 'fold-show', eval = TRUE}
 tree_wf <- workflow() %>%
   add_recipe(recipe)%>%
   add_model(tree_model)
@@ -503,8 +498,6 @@ tree_grid <- grid_regular(
   tree_depth(),
   levels = 5
 )
-
-tree_grid
 
 tree_res <- tree_wf %>%
   tune_grid(
@@ -523,7 +516,7 @@ tune_res <- tune_grid(
 ```
 Our next step is to set up different parts of the model, beginning with the workflow and tree grid. The tree grid shows us a great visual table of the `cost_complexity` and the `tree_depth`. Then, for cross validation, we create 5 folds, and a tree grid with cost complexity and depth, that would be tuned through `param_grid`. `param_grid` is a grid created with different values that the model could go through, with 10 levels. Then, for the classification problem, we are looking at accuracy, so our metric is always set to accuracy. 
 
-```{r, eval = TRUE}
+```{r class.source = 'fold-show', eval = TRUE}
 tree_spec <- decision_tree() %>%
   set_engine("rpart")
 
@@ -560,7 +553,7 @@ accurate
 ```
 Next, we try our model on the training data and obtain its confusion matrix, which gives us an accuracy of ~0.87, which is much better than expected and much better than the KNN model. Even without tuning, this is a great model. Let's try tuning.
 
-```{r}
+```{r class.source = 'fold-show'}
 #fitting the model on training data
 
 class_tree_wf <- workflow() %>%
@@ -573,7 +566,7 @@ param_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
 
 Now that we fit our tree model for cross-validation, we use a popular workflow used by many people in the machine learning community.
 
-```{r, eval=FALSE}
+```{r class.source = 'fold-show', eval=FALSE}
 tune_res <- tune_grid(
   class_tree_wf, 
   resamples = cell_folds, 
@@ -584,7 +577,7 @@ save(tune_res, file = "tree_tune.rda")
 ```
 The autoplot generated shows the accuracy and ROC AUC score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest ROC AUC score being at 0.001.
 
-```{r}
+```{r class.source = 'fold-show'}
 load("tree_tune.rda")
 
 autoplot(tune_res)
@@ -610,10 +603,9 @@ final_tree_fit %>%
 Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for Accuracy and ROC AUC.
 
 ## Boosted Tree
-<<<<<<< HEAD
-=======
+
 As we did previously, we first begin by creating the framework of the model, using classification and xgboost as the engine. Our tuning parameters are min_n, mtry, and learn_rate. Again, we add a workflow model, and parameters to tune.
->>>>>>> ca818faec9edd7e6ad98965df8a6aacc672cb779
+
 
 As we did previously, we first begin by creating the framework of the model, using classification and `xgboost` as the engine. Our tuning parameters are `min_n`, `mtry`, and `learn_rate`.
 
@@ -687,7 +679,7 @@ final_boost_fit %>%
   collect_metrics()
 ```
 
-Our boosted tree seems to do just a bit better than the decision tree at an accuracy of 0.882.
+Our boosted tree seems to do just a bit better than the decision tree at an accuracy of 0.886.
 
 ## Random Forest
 
@@ -731,14 +723,15 @@ load("rf_tune.rda")
 autoplot(rf_tune)
 
 show_best(rf_tune, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
+```
+We see an accuracy of ~0.888 for a random forest with parameters `mtry = 7` and `min_n = 2`.
 
+```{r}
 best_complexity <- select_best(rf_tune, metric = "accuracy")
 
 class_rf_final <- finalize_workflow(rf_workflow, best_complexity)
 
 class_rf_final_fit <- fit(class_rf_final, data = koi_test)
-
-
 
 final_rf_fit = class_rf_final %>% last_fit(koi_split)
 
@@ -746,7 +739,7 @@ final_rf_fit %>%
   collect_metrics()
 
 ```
-Our random forest performs better by only 0.001 compared to the boosted tree model. Because of that, we'll use the random forest as our best model and explore it.
+Our random forest performs better by only 0.001 compared to the boosted tree model. Even though the improvement is negligible, we'll still use the random forest as our best model and explore it.
 
 
 # Best Model 
@@ -755,7 +748,7 @@ Upon comparison among all four models, the random forest performed the best on t
 
 We use https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/ as a guide to explore other metrics.
 
-First, we make a final model by taking the best parameters obtained (`min_n = 21` and `mtry = 7`) in the previous section and run the fit.
+First, we make a final model by taking the best parameters obtained (`min_n = 2` and `mtry = 7`) in the previous section and run the fit.
 
 ```{r}
 
@@ -763,7 +756,7 @@ koi_train$koi_disposition <- as.factor(koi_train$koi_disposition)
 koi_test$koi_disposition <- as.factor(koi_test$koi_disposition)
 
 final_model <- 
-  rand_forest(min_n = 21,
+  rand_forest(min_n = 2,
               mtry = 7,
               mode = "classification") %>%
   set_engine("ranger") %>%
@@ -774,6 +767,7 @@ final_model %>%
   bind_cols(koi_test) %>%
   metrics(truth = koi_disposition, estimate = .pred_class)
 ```
+With an accuracy of 0.891, the model performs quite impressively.
 
 Now we can explore the performance of our model by each predicted value in our sample space: CANDIDATE, CONFIRMED, and FALSE POSITIVE.
 
@@ -809,11 +803,6 @@ We now run different metrics and see the estimates for each.
 predict(final_model, koi_test, type = "prob") %>%
   bind_cols(predict(final_model, koi_test)) %>%
   bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
-  glimpse()
-
-predict(final_model, koi_test, type = "prob") %>%
-  bind_cols(predict(final_model, koi_test)) %>%
-  bind_cols(dplyr::select(koi_test, koi_disposition)) %>%
   metrics(koi_disposition, .pred_CANDIDATE:`.pred_FALSE POSITIVE`, estimate = .pred_class)
 ```
 
@@ -824,7 +813,7 @@ Like with what we did with KNN, let's try running the tree on the same few predi
 
 We create a mini recipe first. 
 
-```{r}
+```{r class.source = 'fold-show'}
 recipe.few <- recipe(
   koi_disposition ~ koi_period + koi_teq + koi_insol + koi_srad + koi_impact + koi_steff, data = koi_train) %>%
   step_dummy(all_nominal(), -all_outcomes()) %>%
@@ -835,7 +824,7 @@ recipe.few <- recipe(
 
 Then we perform the same process as above to find the best parameters.
 
-```{r}
+```{r class.source = 'fold-show'}
 rf_model <-
   rand_forest(min_n = tune(),
               mtry = tune(),
@@ -856,7 +845,7 @@ rf_grid.few <- grid_regular(rf_params.few,
 
 ```
 
-```{r, eval=FALSE}
+```{r class.source = 'fold-show', eval=FALSE}
 rf_tune.few <- rf_workflow.few %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid.few)
@@ -864,7 +853,7 @@ rf_tune.few <- rf_workflow.few %>%
 save(rf_tune.few, rf_workflow.few, file = "rf_tune_few.rda")
 ```
 
-```{r}
+```{r class.source = 'fold-show'}
 load("rf_tune_few.rda")
 
 autoplot(rf_tune.few)
@@ -892,7 +881,8 @@ With an accuracy of 61.7% on testing data, the random forest isn't as good as ou
 
 # Conclusion
 
-We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. KNN did not work as well as the other three, but nevertheless, still produced results with an accuracy greater than 33%. Our cleaned data set included 22 variables which did not have a strong correlation to each other. This made it difficult to remove these variables, because we did not originally know what affected another, or how removing one would affect the rest. We were able to use the properties of Random Forests to determine what variables to use from this large list. The model was able to perform so well because of its use of random subsets (bootstrapping), random set of features deciding the best split, and the average of all predictions from the decision trees. We thought this model would work the best because of our variable size and the use of many trees instead of just one.
+We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. For the full set of predictors, KNN did not work as well as the other three, but nevertheless, still produced results with an accuracy greater than 33% (assuming . Our cleaned data set included 22 variables which did not have a strong correlation to each other. This made it difficult to remove these variables, because we did not originally know what affected another, or how removing one would affect the rest. We were able to use the properties of Random Forests to determine what variables to use from this large list. The model was able to perform so well because of its use of random subsets (bootstrapping), random set of features deciding the best split, and the average of all predictions from the decision trees. We thought this model would work the best because of our variable size and the use of many trees instead of just one.
 
-We did not expect our KNN model to work as well as the rest because of the sensitivity to outliers, the assumption that similar points share similar labels, and the fact that we have a large data set. Furthermore, we know KNN is not good for large data sets since the training data is processed for every predictor, making it an inefficient model. Since the Decision Tree, Boosted Trees, and Random Forest models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED. Of course, this only works for observations with the properties we used in our model already. Further development of models that use properties that are easier to obtain is necessary to further workflow efficiency for those studying KOIs. 
+We did not expect our KNN model to work as well as the rest because of the sensitivity to outliers, the assumption that similar points share similar labels, and the fact that we have a large data set. Furthermore, we know KNN is not good for large data sets since the training data is processed for every predictor, making it an inefficient model. However, for observations with less data, KNN did work better than the random forest model. 
 
+For the full set of predictors, since the Decision Tree, Boosted Trees, and Random Forest models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED. It must be reiterated that this only works for observations with the properties we used in our model already. Further development of models that use properties that are easier to obtain is a necessary next step to further  workflow efficiency for those studying KOIs. 
