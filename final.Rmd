@@ -848,7 +848,7 @@ rf_workflow.few <- workflow() %>%
   add_recipe(recipe.few)
 
 rf_params.few <- parameters(rf_model) %>%
-  update(mtry = mtry(range = c(2, 12)))
+  update(mtry = mtry(range = c(2, 6)))
 
 
 rf_grid.few <- grid_regular(rf_params.few,
@@ -885,22 +885,10 @@ final_rf_fit.few %>%
   collect_metrics()
 
 ```
-
-```{r}
-few_model <- rand_forest(min_n = 21,
-              mtry = 7,
-              mode = "classification") %>%
-  set_engine("ranger") %>%
-  fit(koi_disposition ~ koi_period + koi_teq + koi_insol + koi_srad + koi_impact + koi_steff, data = koi_train)
-few_model %>%
-  predict(koi_test) %>%
-  bind_cols(koi_test) %>%
-  metrics(truth = koi_disposition, estimate = .pred_class)
-```
-
 As expected, the model performs much worse than with more predictors. It's my guess that this is because each predictor is relatively similarly equivalent in significance, as we see in the PCA section. However, maybe through cross-validation, we can obtain the right parameters for the random forest to use with these predictors. 
 
-Still, against this particular model, KNN wins by about 1%.
+With an accuracy of 61.7% on testing data, the random forest isn't as good as our reduced KNN model earlier. Thus, for observations with less data, we can should KNN to classify between CANDIDATE, FALSE POSITIVE, and CONFIRMED.
+
 
 # Conclusion
 
