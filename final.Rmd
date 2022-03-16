@@ -156,6 +156,7 @@ ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geo
 Now, focusing on `koi_disposition`, we can create a histogram to see the count of observations in each class. We can see that FALSE POSITIVEs have the highest count, being over 3,000. Confirmed follows next with around 2,300 and CANDIDATE has the smallest number of counts at around 1,800.
 
 ## Histograms
+
 ```{r}
 ggplot(koi, aes(koi$koi_disposition)) + 
   geom_bar(stat = "count")
@@ -170,6 +171,7 @@ data <- rnorm(koi)
 qqnorm(data, col = "steelblue") 
 qqline(data)
 ```
+
 Our next qqplot is to check the distribution of `koi_disposition`. Again, we can see that `koi_dispostion` is normally distributed. The points follow a much straighter line.
 
 ```{r}
@@ -257,9 +259,11 @@ var_df %>%
   ggplot(aes(x=PC, y=var_explained)) + 
   geom_col()
 ```
+
 As we can see, there's no PC that particularly stands out as none exceed 20% variance explained.
 
 And here's a plot of the cumulative sum of explained variance by each PC.
+
 ```{r}
 plot(cumsum(percent_variation), xlab = "Principal Component",
      ylab = "Proportion of Variation Explained", 
@@ -400,7 +404,6 @@ It appears that 38 is the best number of neighbors, with a test error rate of ~ 
 
 Out of curiosity, let's try KNN on only a few predictors (`koi_period`, `koi_teq`, `koi_insol`, `koi_srad`, `koi_impact`, and `koi_steff`). These predictors were chosen because we think that the measurements can be obtained easier than the others.
 
-
 ```{r, eval = F}
 XTrain.few = koi_train %>% dplyr::select(c(-koi_disposition, koi_period, koi_teq, koi_insol, koi_srad, koi_impact, koi_steff))
 YTrain.few = koi_train$koi_disposition
@@ -479,6 +482,7 @@ ggplot(errors, aes(x = neighbors, y = error, color = variable)) +
   stat_summary(aes(group = variable), fun = "mean", geom = "line", size = 3) +
   geom_vline(aes(xintercept = bestneighbor.few), linetype = "dashed")
 ```
+
 It appears that the test error rate increased by 0.01, despite losing 13 predictors, which is evidence against my claim that KNN would likely work better for KOI with little data on it.
 
 ## Decision Tree
@@ -525,6 +529,7 @@ tune_res <- tune_grid(
   metrics = metric_set(accuracy)
 )
 ```
+
 Our next step is to set up different parts of the model, beginning with the workflow and tree grid. The tree grid shows us a great visual table of the `cost_complexity` and the `tree_depth`. Then, for cross validation, we create 5 folds, and a tree grid with cost complexity and depth, that would be tuned through `param_grid`. `param_grid` is a grid created with different values that the model could go through, with 10 levels. Then, for the classification problem, we are looking at accuracy, so our metric is always set to accuracy. 
 
 ```{r class.source = 'fold-show', eval = TRUE}
@@ -562,6 +567,7 @@ accurate = augment(class_tree_fit, new_data = koi_train) %>%
   accuracy(truth = koi_disposition, estimate = .pred_class)
 accurate
 ```
+
 Next, we try our model on the training data and obtain its confusion matrix, which gives us an accuracy of ~0.87, which is much better than expected and much better than the KNN model. Even without tuning, this is a great model. Let's try tuning.
 
 ```{r class.source = 'fold-show'}
@@ -586,6 +592,7 @@ tune_res <- tune_grid(
 
 save(tune_res, file = "tree_tune.rda")
 ```
+
 The autoplot generated shows the accuracy and ROC AUC score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest ROC AUC score being at 0.001.
 
 ```{r class.source = 'fold-show'}
@@ -611,6 +618,7 @@ final_tree_fit = class_tree_final %>% last_fit(koi_split)
 final_tree_fit %>%
   collect_metrics()
 ```
+
 Now, we use the best complexity, which we found to be 0.001 to tune the parameters, and create a final fit of the tree, and collect the estimated metrics for Accuracy and ROC AUC.
 
 ## Boosted Tree
@@ -735,6 +743,7 @@ autoplot(rf_tune)
 
 show_best(rf_tune, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
 ```
+
 We see an accuracy of ~0.888 for a random forest with parameters `mtry = 7` and `min_n = 2`.
 
 ```{r}
@@ -750,6 +759,7 @@ final_rf_fit %>%
   collect_metrics()
 
 ```
+
 Our random forest performs better by only 0.001 compared to the boosted tree model. Even though the improvement is negligible, we'll still use the random forest as our best model and explore it.
 
 
@@ -778,6 +788,7 @@ final_model %>%
   bind_cols(koi_test) %>%
   metrics(truth = koi_disposition, estimate = .pred_class)
 ```
+
 With an accuracy of 0.891, the model performs quite impressively.
 
 Now we can explore the performance of our model by each predicted value in our sample space: CANDIDATE, CONFIRMED, and FALSE POSITIVE.
@@ -885,6 +896,7 @@ final_rf_fit.few %>%
   collect_metrics()
 
 ```
+
 As expected, the model performs much worse than with more predictors. It's my guess that this is because each predictor is relatively similarly equivalent in significance, as we see in the PCA section. However, maybe through cross-validation, we can obtain the right parameters for the random forest to use with these predictors. 
 
 With an accuracy of 61.7% on testing data, the random forest isn't as good as our reduced KNN model earlier. Thus, for observations with less data, we can should KNN to classify between CANDIDATE, FALSE POSITIVE, and CONFIRMED.
