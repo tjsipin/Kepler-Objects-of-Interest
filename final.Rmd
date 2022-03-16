@@ -683,6 +683,10 @@ Finally, after collecting the metrics, and seeing the accuracy, we can use autop
 ```{r}
 load("boost_tune.rda")
 
+autoplot(boost_tune)
+```
+
+```{r}
 best_complexity <- select_best(boost_res, metric = "accuracy")
 
 class_boost_final <- finalize_workflow(boost_wflow, best_complexity)
