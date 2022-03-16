@@ -1,10 +1,10 @@
 ---
 title: "Predicting Dispositions of Kepler Objects of Interest"
 author: "TJ Sipin, Preeti Kulkarni"
-date: "3/2/2022"
 output: 
   html_document:
     code_folding: hide
+    toc: true
 
 ---
 
@@ -681,7 +681,7 @@ save(boost_tune, boost_res, file = "boost_tune.rda")
 Finally, after collecting the metrics, and seeing the accuracy, we can use autoplot to plot out the results.
 
 ```{r}
-load("boost_tune.rda")
+load("rda/boost_tune.rda")
 
 autoplot(boost_tune)
 ```
@@ -742,7 +742,7 @@ save(rf_tune, rf_workflow, file = "rf_tune.rda")
 
 ```{r}
 
-load("rf_tune.rda")
+load("rda/rf_tune.rda")
 
 autoplot(rf_tune)
 
@@ -881,7 +881,7 @@ save(rf_tune.few, rf_workflow.few, file = "rf_tune_few.rda")
 ```
 
 ```{r class.source = 'fold-show'}
-load("rf_tune_few.rda")
+load("rda/rf_tune_few.rda")
 
 autoplot(rf_tune.few)
 
