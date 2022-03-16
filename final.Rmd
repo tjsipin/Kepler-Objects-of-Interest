@@ -1,5 +1,5 @@
 ---
-title: "playground"
+title: "Predicting Dispositions of Kepler Objects of Interest"
 author: "TJ Sipin, Preeti Kulkarni"
 date: "3/2/2022"
 output: 
@@ -45,7 +45,9 @@ library(xgboost)
 library(rlang)
 library(tidyr)
 ```
-![Famous Exoplanets and Earth](tjsipin/Documents/School/W22/PSTAT_131/fuzzy-dollop/pictures/exoplanets.jpg)
+<center>
+![Famous Exoplanets and Earth](pictures/exoplanets.jpg)
+</center>
 
 # Introduction
 
@@ -53,10 +55,17 @@ library(tidyr)
 
 NASA studies foreign bodies and planets in space by using highly developed technology. This project uses data from the Kepler Space Observatory, which is a NASA built satellite that was launched in 2009. NASA's ultimate goal is finding other habitable planets besides Earth. NASA calls these possible habitable planets exoplanets. As of now, there are over 3000 confirmed exoplanets total, while the camera continues to do further exploration.
 
+<center>
+![](pictures/koi_vs_earth.jpg)
+</center>
+
 KOI stands for Kepler Objects of Interest. The data set we are exploring contains 10,000 exoplanet candidates that the Kepler Space Observatory has observations on (KOI). The observations depend on several variables and have many properties. We are interested in predicting the KOI disposition, which says whether a planet is confirmed, a false positive, or a candidate of being a KOI.
 
 
 ## Why Might This Model Be Useful?
+<center>
+![](pictures/koi_workflow.jpg)
+</center>
 
 This model is useful because it allows us to gain a better understanding and confidence on whether a planet is habitable or not, and to prioritize resources to planets predicted to be categorized as CONFIRMED or CANDIDATEs, which would save researchers time and money. It also allows us to figure out what factors are the most important when declaring a planet an exoplanet. 
 
@@ -111,6 +120,8 @@ koi.corr <- koi %>%
   correlate()
 rplot(koi.corr)
 ```
+
+
 Next, we look at some descriptive statistics of the data set. We can use the `summary()` function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the `colnames()` function to familiarize ourselves with the column names.
 
 # Data Exploration
@@ -886,3 +897,6 @@ We used four models: KNN, Decision Tree, Boosted Trees, and Random Forest. For t
 We did not expect our KNN model to work as well as the rest because of the sensitivity to outliers, the assumption that similar points share similar labels, and the fact that we have a large data set. Furthermore, we know KNN is not good for large data sets since the training data is processed for every predictor, making it an inefficient model. However, for observations with less data, KNN did work better than the random forest model. 
 
 For the full set of predictors, since the Decision Tree, Boosted Trees, and Random Forest models pushed towards an accuracy of 90% on testing data, we can be quite confident that implementation of our model can result in a more efficient workflow for KOI researchers as they can now prioritize objects predicted to be CANDIDATEs or CONFIRMED. It must be reiterated that this only works for observations with the properties we used in our model already. Further development of models that use properties that are easier to obtain is a necessary next step to further  workflow efficiency for those studying KOIs. 
+<center>
+![](pictures/nasa-logo-web-rgb_0.jpg)
+</center>
