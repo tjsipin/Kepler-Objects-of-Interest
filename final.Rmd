@@ -386,7 +386,94 @@ ggplot(errors, aes(x = neighbors, y = error, color = variable)) +
   geom_vline(aes(xintercept = bestneighbor), linetype = "dashed")
 ```
 
-It appears that 38 is the best number of neighbors, with a test error rate of ~ 0.36 (test accuracy rate of ~ 0.64). This isn't too terrible, but as we see later, we can definitely do better.
+It appears that 38 is the best number of neighbors, with a test error rate of ~ 0.36 (test accuracy rate of ~ 0.64). This isn't too terrible, but as we see later, we can definitely do better. The low accuracy rate is probably due to high dimensionality (19 predictors).
+
+
+Out of curiosity, let's try KNN on only a few predictors (`koi_period`, `koi_teq`, `koi_insol`, `koi_srad`, `koi_impact`, and `koi_steff`). These predictors were chosen because we think that the measurements can be obtained easier than the others.
+
+
+```{r, eval = F}
+XTrain.few = koi_train %>% dplyr::select(c(-koi_disposition, koi_period, koi_teq, koi_insol, koi_srad, koi_impact, koi_steff))
+YTrain.few = koi_train$koi_disposition
+XTest.few = koi_test %>% dplyr::select(c(-koi_disposition, koi_period, koi_teq, koi_insol, koi_srad, koi_impact, koi_steff))
+YTest.few = koi_test$koi_disposition
+
+
+
+# Set 3-fold CV
+
+nfold = 3
+
+set.seed(123)
+folds = cut(1:nrow(koi_train), breaks=nfold, labels=F) %>% sample()
+folds
+
+
+# Set error.folds as a vector to save validation errors in future
+error.folds.few = NULL
+
+# Give possible number of nearest neighbors to be considered
+allK = 1:50
+
+set.seed(234)
+
+# Loop through different number of neighbors
+for(k in allK) {
+  # Loop through different chunk id
+  for (j in seq(3)) {
+    tmp = do.chunk(chunkid = j, folddef = folds, Xdat = XTrain.few, Ydat = YTrain.few, k = k)
+    
+    tmp$neighbors = k # Records last number of neighbor
+    
+    error.folds.few = rbind(error.folds.few, tmp) # combines results
+  }
+}
+
+save(error.folds.few, file = "errorfew.rda")
+```
+
+```{r}
+load("errorfew.rda")
+
+head(error.folds.few, 10)
+
+# Transform the format of error.folds for further convenience
+errors = melt(error.folds.few, id.vars = c('fold', 'neighbors'), value.name = 'error')
+
+# Choose the number of neighbors which minimizes validation error
+val.error.means.few = errors %>%
+  # Select all rows of validation errors
+  filter(variable=='val.error') %>%
+  # Group the selected data frame by neighbors
+  group_by(neighbors, variable) %>%
+  # Calculate CV error rate for each k
+  summarise_each(funs(mean), error) %>%
+  # Remove existing group
+  ungroup() %>%
+  filter(error==min(error))
+
+# Best num of neighbors (if tie, pick larger number of neighbors for simpler model)
+
+bestneighbor.few = max(val.error.means.few$neighbors)
+bestneighbor.few
+
+set.seed(345)
+pred.YTest.few = knn(train = XTrain.few, test = XTest.few, cl = YTrain.few, k = bestneighbor.few)
+
+# Confusion matrix
+conf.matrix = table(predicted = pred.YTest.few, true = YTest.few)
+
+# Test error rate
+
+print(paste("Test error rate: ", 1 - sum(diag(conf.matrix)/sum(conf.matrix))))
+
+# Plot errors
+ggplot(errors, aes(x = neighbors, y = error, color = variable)) + 
+  geom_line(aes(group = interaction(variable,fold))) +
+  stat_summary(aes(group = variable), fun = "mean", geom = "line", size = 3) +
+  geom_vline(aes(xintercept = bestneighbor.few), linetype = "dashed")
+```
+It appears that the test error rate increased by 0.01, despite losing 13 predictors, which is evidence against my claim that KNN would likely work better for KOI with little data on it.
 
 ## Decision Tree
 
@@ -630,18 +717,11 @@ rf_grid <- grid_regular(rf_params,
 Due to long runtimes, we save `rf_tune`, `rf_workflow`, and `rf_res` to a file to be read later.
 
 ```{r, eval = FALSE}
-
-rf_res <- rf_workflow %>%
-  tune_grid(resamples = koi_folds,
-            grid = rf_grid)
-
-
-
 rf_tune <- rf_workflow %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid)
 
-save(rf_tune, rf_workflow, rf_res, file = "rf_tune.rda")
+save(rf_tune, rf_workflow, file = "rf_tune.rda")
 ```
 
 ```{r}
@@ -652,7 +732,7 @@ autoplot(rf_tune)
 
 show_best(rf_tune, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
 
-best_complexity <- select_best(rf_res, metric = "accuracy")
+best_complexity <- select_best(rf_tune, metric = "accuracy")
 
 class_rf_final <- finalize_workflow(rf_workflow, best_complexity)
 
@@ -739,20 +819,88 @@ predict(final_model, koi_test, type = "prob") %>%
 
 Overall, we have a very high accuracy similar to our boosted tree and pruned models on our testing data.
 
-Let's try running the tree on a few predictors that we believe are easy to obtain, like `koi_period`, `koi_teq`, `koi_insol`, `koi_incl`, `koi_ror`, and `koi_dor`.
+
+Like with what we did with KNN, let's try running the tree on the same few predictors that we believe are easier to obtain, like `koi_period`, `koi_teq`, `koi_insol`, `koi_srad`, `koi_impact`, and `koi_steff`.
+
+We create a mini recipe first. 
+
+```{r}
+recipe.few <- recipe(
+  koi_disposition ~ koi_period + koi_teq + koi_insol + koi_srad + koi_impact + koi_steff, data = koi_train) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_normalize(all_predictors()) %>%
+  step_zv(all_predictors()) %>%
+  step_impute_median(all_predictors())
+```
+
+Then we perform the same process as above to find the best parameters.
+
+```{r}
+rf_model <-
+  rand_forest(min_n = tune(),
+              mtry = tune(),
+              mode = "classification") %>%
+  set_engine("ranger")
+
+
+rf_workflow.few <- workflow() %>%
+  add_model(rf_model)  %>%
+  add_recipe(recipe.few)
+
+rf_params.few <- parameters(rf_model) %>%
+  update(mtry = mtry(range = c(2, 12)))
+
+
+rf_grid.few <- grid_regular(rf_params.few,
+                        levels = 3)
+
+```
+
+```{r, eval=FALSE}
+rf_tune.few <- rf_workflow.few %>%
+  tune_grid(resamples = koi_folds,
+            grid = rf_grid.few)
+
+save(rf_tune.few, rf_workflow.few, file = "rf_tune_few.rda")
+```
+
+```{r}
+load("rf_tune_few.rda")
+
+autoplot(rf_tune.few)
+
+show_best(rf_tune.few, metric = "accuracy") %>% dplyr::select(-.estimator, -.config)
+
+best_complexity.few <- select_best(rf_tune.few, metric = "accuracy")
+
+class_rf_final.few <- finalize_workflow(rf_workflow.few, best_complexity.few)
+
+class_rf_final_fit.few <- fit(class_rf_final.few, data = koi_test)
+
+
+
+final_rf_fit.few = class_rf_final.few %>% last_fit(koi_split)
+
+final_rf_fit.few %>%
+  collect_metrics()
+
+```
 
 ```{r}
 few_model <- rand_forest(min_n = 21,
               mtry = 7,
               mode = "classification") %>%
   set_engine("ranger") %>%
-  fit(koi_disposition ~ koi_period + koi_teq + koi_insol, data = koi_train)
+  fit(koi_disposition ~ koi_period + koi_teq + koi_insol + koi_srad + koi_impact + koi_steff, data = koi_train)
 few_model %>%
   predict(koi_test) %>%
   bind_cols(koi_test) %>%
   metrics(truth = koi_disposition, estimate = .pred_class)
 ```
 
+As expected, the model performs much worse than with more predictors. It's my guess that this is because each predictor is relatively similarly equivalent in significance, as we see in the PCA section. However, maybe through cross-validation, we can obtain the right parameters for the random forest to use with these predictors. 
+
+Still, against this particular model, KNN wins by about 1%.
 
 # Conclusion
 
