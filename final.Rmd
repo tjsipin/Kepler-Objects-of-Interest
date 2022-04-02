@@ -107,9 +107,20 @@ koi = koi %>% dplyr::select(c(koi_disposition, koi_fpflag_nt, koi_fpflag_ss,
   mutate(koi_fpflag_ec = factor(koi_fpflag_ec))
 ```
 
-## Exploratory Data Analysis
+# Exploratory Data Analysis
 
-We first begin by looking at the correlation between predictors not including those that are of class factor and integer. 
+## General summary of data set
+
+First, we look at some descriptive statistics of the data set. We can use the `summary()` function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the `colnames()` function to familiarize ourselves with the column names.
+
+
+```{r}
+summary(koi)
+```
+
+## Possible correlation between predictors
+
+Next, we can look at the correlation between predictors not including those that are of class factor and integer. 
 We can see the rplot between the numeric factors. Overall, it seems as if predictors do not have a high correlation with 
 each other, as there are many red dots.
 
@@ -123,23 +134,13 @@ rplot(koi.corr) +
 ```
 
 
-Next, we look at some descriptive statistics of the data set. We can use the `summary()` function to find the mean, median, min, max, and quartiles of the numeric predictors. We can use the `colnames()` function to familiarize ourselves with the column names.
+## Graphs of univariate, multivariate relationships between outcome and predictor(s) or between predictors
 
-# Data Exploration
-```{r}
-summary(koi)
-```
-
-# Graphs of univariate, multivariate relationships between outcome and predictor(s) or between predictors
-
-
-First, we plot `koi_score` versus `koi_disposition`. `koi_disposition` has the current classes: CANDIDATE, FALSE POSITIVE, or CONFIRMED. `koi_score` is a value between 0 and 1 that indicates the confidence in the KOI 
-disposition. For CANDIDATEs, a higher value indicates more confidence in its disposition, while for FALSE POSITIVEs, 
-a higher value indicates less confidence in that disposition. We can see that CONFIRMED cases tend to have a higher `koi_score`, where most of them are above 0.5. For CANDIDATE, the koi_score ranges from 25-75%. For the FALSE POSITIVE the `koi_score` ranges from 0-50%. Logically, this makes sense, as confirmed planets would have a higher confidence level.
+First, we plot `koi_score` versus `koi_disposition`. `koi_disposition` has the current classes: CANDIDATE, FALSE POSITIVE, or CONFIRMED. `koi_score` is a value between 0 and 1 that indicates the confidence in the KOI disposition. For CANDIDATEs, a higher value indicates more confidence in its disposition, while for FALSE POSITIVEs, a higher value indicates less confidence in that disposition. We can see that CONFIRMED cases tend to have a higher `koi_score`, where most of them are above 0.5. For CANDIDATE, the koi_score ranges from 25-75%. For the FALSE POSITIVE the `koi_score` ranges from 0-50%. Logically, this makes sense, as confirmed planets would have a higher confidence level.
 
 ```{r}
 #just curious about the koi_score v dispostion, shows up as first
-koi_eda <- read.csv("cumulative.csv")
+koi_eda <- read.csv("data/cumulative.csv")
  
 #score v disposition
 koi_eda %>%
@@ -154,6 +155,8 @@ Next, we plot `koi_disposition` against `koi_prad`, where `koi_prad` is the radi
 
 ggplot(koi, aes(x= koi_disposition, y= koi_prad, color = koi_disposition)) + geom_point()
 ```
+
+
 Now, focusing on `koi_disposition`, we can create a histogram to see the count of observations in each class. We can see that FALSE POSITIVEs have the highest count, being over 3,000. Confirmed follows next with around 2,300 and CANDIDATE has the smallest number of counts at around 1,800.
 
 ## Histograms
@@ -354,13 +357,13 @@ for(k in allK) {
   }
 }
 
-save(error.folds, file = "error.rda")
+save(error.folds, file = "rda/error.rda")
 ```
 
 From `error.folds`, we choose the best number of neighbors based on validation error. If there was a tie in error rate, then we would choose the larger number of neighbors for a simpler model.
 
 ```{r}
-load("error.rda")
+load("rda/error.rda")
 
 head(error.folds, 10)
 
@@ -442,11 +445,11 @@ for(k in allK) {
   }
 }
 
-save(XTrain.few, YTrain.few, XTest.few, YTest.few, error.folds.few, file = "errorfew.rda")
+save(XTrain.few, YTrain.few, XTest.few, YTest.few, error.folds.few, file = "rda/errorfew.rda")
 ```
 
 ```{r}
-load("errorfew.rda")
+load("rda/errorfew.rda")
 
 # Transform the format of error.folds for further convenience
 errors = melt(error.folds.few, id.vars = c('fold', 'neighbors'), value.name = 'error')
@@ -591,13 +594,13 @@ tune_res <- tune_grid(
   grid = param_grid, 
   metrics = metric_set(accuracy))
 
-save(tune_res, file = "tree_tune.rda")
+save(tune_res, file = "rda/tree_tune.rda")
 ```
 
 The autoplot generated shows the accuracy and ROC AUC score. The graph itself is a Cost-Complexity Parameter graph, and we can see the highest accuracy is around 88% with the highest ROC AUC score being at 0.001.
 
 ```{r class.source = 'fold-show'}
-load("tree_tune.rda")
+load("rda/tree_tune.rda")
 
 autoplot(tune_res)
 
@@ -675,7 +678,7 @@ boost_res <-
             roc_auc, sens, spec
           ))
 
-save(boost_tune, boost_res, file = "boost_tune.rda")
+save(boost_tune, boost_res, file = "rda/boost_tune.rda")
 ```
 
 Finally, after collecting the metrics, and seeing the accuracy, we can use autoplot to plot out the results.
@@ -737,7 +740,7 @@ rf_tune <- rf_workflow %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid)
 
-save(rf_tune, rf_workflow, file = "rf_tune.rda")
+save(rf_tune, rf_workflow, file = "rda/rf_tune.rda")
 ```
 
 ```{r}
@@ -877,7 +880,7 @@ rf_tune.few <- rf_workflow.few %>%
   tune_grid(resamples = koi_folds,
             grid = rf_grid.few)
 
-save(rf_tune.few, rf_workflow.few, file = "rf_tune_few.rda")
+save(rf_tune.few, rf_workflow.few, file = "rda/rf_tune_few.rda")
 ```
 
 ```{r class.source = 'fold-show'}
