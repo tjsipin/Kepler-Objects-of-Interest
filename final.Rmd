@@ -53,7 +53,7 @@ library(tidyr)
 
 ## What is KOI?
 
-NASA studies foreign bodies and planets in space by using highly developed technology. This project uses data from the Kepler Space Observatory, which is a NASA built satellite that was launched in 2009. NASA's ultimate goal is finding other habitable planets besides Earth. NASA calls these possible habitable planets exoplanets. As of now, there are over 3000 confirmed exoplanets total, while the camera continues to do further exploration.
+NASA studies foreign bodies and planets in space by using highly developed technology. This project uses data from the Kepler Space Observatory, which is a NASA built satellite that was launched in 2009. NASA's ultimate goal is finding other habitable planets besides Earth. NASA calls these possible habitable planets exoplanets. As of now, there are over 3,000 confirmed exoplanets total, while the camera continues to do further exploration.
 
 <center>
 ![](pictures/koi_vs_earth.jpg)
@@ -90,7 +90,7 @@ The definitions are taken from the official dictionary of this data set: https:/
 
 
 ```{r}
-koi = read.csv("cumulative.csv")
+koi = read.csv("data/cumulative.csv")
 koi <- dplyr::select(koi,-c(kepoi_name, koi_teq_err1, koi_teq_err2, rowid, kepid, kepler_name, koi_tce_delivname))
 
 # data wrangle koi
