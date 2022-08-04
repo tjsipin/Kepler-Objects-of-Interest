@@ -41,4 +41,4 @@ Preeti Kulkarni:
 - Models: Tree and Boosted Tree
 - Conclusion
 
-For questions or concerns, please email tjsipin@gmail.com.
+For questions or concerns, please email tjsipin@gmail.com, preeti@ucsb.edu.
